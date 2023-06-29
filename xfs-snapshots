@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+#-*-coding:utf-8 -*-
+#Auto updated?
+#   Yes
+#File:
+#   xfsBackupRestore
+#Author:
+#   The-Repo-Club [wayne6324@gmail.com]
+#Github:
+#   https://github.com/The-Repo-Club/
+#
+#Created:
+#   Wed 28 June 2023, 09:17:56 PM [GMT+1]
+#Modified:
+#   Thu 29 June 2023, 02:19:54 PM [GMT+1]
+#
+#Description:
+#   This script provides a menu-based interface to perform XFS backup, restore,
+#   and removal operations. It allows users to create backups of XFS file
+#   systems using xfsdump, compress them with gzip, restore backups using
+#   xfsrestore, and remove existing backups. The script presents a menu with
+#   options to perform these operations and guides the user through the process.
+#   It also manages the maximum number of backups by automatically removing
+#   the oldest backup if the limit is exceeded.
+#
+#Dependencies:
+#   xfsdump (xfsprogs) - For XFS backup and restore utilities
+#   gzip - For compressing backup files
+#   coreutils - For command-line utilities like ls and rm
+
+# Declare variables
+max_backups=10
+
+# Assign values to variables with quotes
+backup_directory="/mnt/500GB/example"
+xfs_device="/dev/sdb1"
+target_directory="/mnt/500GB/example2"
+
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+#=== FUNCTION =================================================================
+#        Name: perform_backup
+# Description: Performs XFS backup by creating a backup file using xfsdump
+#              and compressing it with gzip. Removes the oldest backup if the
+#              maximum number of backups is exceeded.
+#==============================================================================
+
+perform_backup() {
+    echo -e "${GREEN}Performing XFS backup...${NC}"
+    local backup_file
+    backup_file="${backup_directory}/backup_$(date +%Y%m%d_%H%M%S).xfs.gz"
+    xfsdump -J - "${xfs_device}" | gzip >"${backup_file}"
+    echo -e "Backup completed: ${backup_file}"
+
+    # Remove oldest backup if exceeding maximum number of backups
+    local backups=("${backup_directory}"/backup_*.xfs.gz)
+    local num_backups=${#backups[@]}
+    if [ "${num_backups}" -gt "${max_backups}" ]; then
+        local oldest_backup=${backups[0]}
+        rm "${oldest_backup}"
+        echo -e "${YELLOW}Removed oldest backup: ${oldest_backup}${NC}"
+    fi
+}
+
+#=== FUNCTION =================================================================
+#        Name: perform_restore
+# Description: Performs XFS restore by selecting the latest backup file and
+#              extracting it using gzip and xfsrestore.
+#==============================================================================
+
+perform_restore() {
+    echo -e "${GREEN}Performing XFS restore...${NC}"
+    local latest_backup
+    mapfile -t latest_backup < <(ls -t "${backup_directory}"/backup_*.xfs.gz)
+    if [ "${#latest_backup[@]}" -eq 0 ]; then
+        echo -e "${RED}No backups available for restore.${NC}"
+        return
+    fi
+
+    gzip -dc "${latest_backup[0]}" | xfsrestore -J - "${target_directory}"
+    echo -e "Restore completed: ${target_directory}"
+}
+
+#=== FUNCTION =================================================================
+#        Name: list_backups
+# Description: Lists all available backups in the backup directory.
+#==============================================================================
+
+list_backups() {
+    echo -e "${GREEN}Available backups:${NC}"
+    local backups=()
+    readarray -t backups < <(find "${backup_directory}" -name "backup_*.xfs.gz")
+    local num_backups=${#backups[@]}
+    if [ "${num_backups}" -eq 0 ]; then
+        echo -e "${YELLOW}No backups found.${NC}"
+        return
+    fi
+
+    for ((i = 0; i < num_backups; i++)); do
+        echo -e "${YELLOW}$((i + 1))${NC}. ${backups[i]}"
+    done
+
+    local choice
+    while true; do
+        local exit_option=$((num_backups + 1))
+        echo -e "${GREEN}${exit_option}${NC}. Exit"
+        if [ "$num_backups" -gt 0 ]; then
+            read -r -p "Enter your choice (1-${exit_option}): " choice
+        else
+            read -r -p "Enter your choice (1): " choice
+        fi
+
+        if [ "$choice" = "${exit_option}" ]; then
+            return
+        elif [ "$choice" -ge 1 ] && [ "$choice" -le "$exit_option" ]; then
+            local backup_index=$((choice - 2))
+            if [ "$backup_index" -lt "$num_backups" ]; then
+                perform_restore "${backups[backup_index]}"
+                return
+            elif [ "$choice" -eq "$exit_option" ]; then
+                echo -e "${GREEN}Exiting...${NC}"
+                exit 0
+            fi
+        else
+            echo -e "${RED}Invalid choice. Please try again.${NC}"
+        fi
+    done
+}
+
+#=== FUNCTION =================================================================
+#        Name: remove_backup
+# Description: Displays the list of available backups and allows the user to
+#              select a backup to remove. The selected backup will be removed
+#              from the backup directory.
+#==============================================================================
+
+remove_backup() {
+    echo -e "${GREEN}Available backups:${NC}"
+    local backups=()
+    readarray -t backups < <(find "${backup_directory}" -name "backup_*.xfs.gz")
+    local num_backups=${#backups[@]}
+    if [ "${num_backups}" -eq 0 ]; then
+        echo -e "${YELLOW}No backups found.${NC}"
+        return
+    fi
+
+    for ((i = 0; i < num_backups; i++)); do
+        echo -e "${YELLOW}$((i + 1))${NC}. ${backups[i]}"
+    done
+
+    local choice
+    while true; do
+        local exit_option=$((num_backups + 1))
+        echo -e "${GREEN}${exit_option}${NC}. Exit"
+        if [ "$num_backups" -gt 0 ]; then
+            read -r -p "Enter the backup number to remove (1-${num_backups}): " choice
+        else
+            read -r -p "Enter your choice (1): " choice
+        fi
+
+        if [ "$choice" = "${exit_option}" ]; then
+            return
+        elif [ "$choice" -ge 1 ] && [ "$choice" -le "$num_backups" ]; then
+            local backup_index=$((choice - 1))
+            if [ "$backup_index" -lt "$num_backups" ]; then
+                local backup_path="${backups[backup_index]}"
+                echo -e "${YELLOW}Removing backup: ${backup_path}${NC}"
+                rm "$backup_path"
+                echo -e "${GREEN}Backup removed successfully.${NC}"
+                return
+            fi
+        else
+            echo -e "${RED}Invalid choice. Please try again.${NC}"
+        fi
+    done
+}
+
+
+
+#=== Main Script ==============================================================
+# Description: Main script section to display the menu and perform
+# user-selected actions.
+#==============================================================================
+
+while true; do
+    echo -e "${BLUE}XFS Backup and Restore Script${NC}"
+    echo -e "-----------------------------"
+    echo -e "Please select an option:"
+    echo -e "${GREEN}1${NC}. Backup XFS"
+    echo -e "${GREEN}2${NC}. List Backups"
+    echo -e "${GREEN}3${NC}. Remove Backup"
+    echo -e "${GREEN}4${NC}. Exit"
+
+    read -r -p "Enter your choice (1-4): " choice
+
+    case $choice in
+    1)
+        perform_backup
+        ;;
+    2)
+        list_backups
+        ;;
+    3)
+        remove_backup
+        ;;
+    4)
+        echo -e "${GREEN}Exiting...${NC}"
+        exit 0
+        ;;
+    *)
+        echo -e "${RED}Invalid choice. Please try again.${NC}"
+        ;;
+    esac
+
+    echo
+done
