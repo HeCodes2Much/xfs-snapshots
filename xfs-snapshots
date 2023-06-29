@@ -3,7 +3,7 @@
 #Auto updated?
 #   Yes
 #File:
-#   xfsBackupRestore
+#   xfs-snapshots
 #Author:
 #   The-Repo-Club [wayne6324@gmail.com]
 #Github:
@@ -12,7 +12,7 @@
 #Created:
 #   Wed 28 June 2023, 09:17:56 PM [GMT+1]
 #Modified:
-#   Thu 29 June 2023, 02:19:54 PM [GMT+1]
+#   Thu 29 June 2023, 02:29:58 PM [GMT+1]
 #
 #Description:
 #   This script provides a menu-based interface to perform XFS backup, restore,
