@@ -12,7 +12,7 @@
 #Created:
 #   Wed 28 June 2023, 09:17:56 PM [GMT+1]
 #Modified:
-#   Thu 29 June 2023, 02:44:20 PM [GMT+1]
+#   Thu 29 June 2023, 02:59:29 PM [GMT+1]
 #
 #Description:
 #   This script provides a menu-based interface to perform XFS backup, restore,
@@ -30,23 +30,58 @@
 #
 # shellcheck disable=all
 
+#=== COLOR CODES =============================================================
+# Description: Defines color codes for terminal output formatting.
+#=============================================================================
 
-# Check if the configuration file is provided as an argument
-if [ -z "$1" ]; then
-    echo "Error: Configuration file path is missing."
-    echo "Usage: ${0##*/} <config_file>"
-    exit 1
-fi
-
-# Source the configuration file
-source "$1"
-
-# Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+
+#=== CHECK ARGUMENT ===========================================================
+# Description: Checks if the configuration file is provided as an argument.
+#==============================================================================
+
+if [ -z "$1" ]; then
+    echo -e "${RED}Error: Configuration file path is missing.${NC}"
+    echo "Usage: ./xfsBackupRestore.sh <config_file>"
+    exit 1
+fi
+
+#=== SOURCE CONFIGURATION ======================================================
+# Description: Sources the configuration file.
+#==============================================================================
+
+. "$1"
+
+#=== CHECK VARIABLES ==========================================================
+# Description: Checks if all required variables are set in the configuration.
+#==============================================================================
+
+missing_variables=()
+if [ -z "$max_backups" ]; then
+    missing_variables+=("max_backups")
+fi
+if [ -z "$backup_directory" ]; then
+    missing_variables+=("backup_directory")
+fi
+if [ -z "$xfs_device" ]; then
+    missing_variables+=("xfs_device")
+fi
+if [ -z "$target_directory" ]; then
+    missing_variables+=("target_directory")
+fi
+
+if [ "${#missing_variables[@]}" -gt 0 ]; then
+    echo -e "${RED}Error: Invalid configuration. The following variables are missing:${NC}"
+    for variable in "${missing_variables[@]}"; do
+        echo -e "${YELLOW} - $variable${NC}"
+    done
+    exit 1
+fi
 
 #=== FUNCTION =================================================================
 #        Name: perform_backup

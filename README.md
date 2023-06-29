@@ -14,7 +14,7 @@ The following dependencies are required to run the script:
 
 1. Make sure you have the required dependencies installed on your system.
 2. Clone the repository or download the script file.
-3. Set the necessary variables in the script:
+3. Set the necessary variables in a config file:
 
 ```shell
 max_backups=10
@@ -23,16 +23,16 @@ xfs_device="/dev/sdb1"
 target_directory="/mnt/500GB/example2"
 ```
 
-4. Make the script executable:
+4. Install the script:
 
 ```shell
-chmod +x xfsBackupRestore.sh
+sudo make install
 ```
 
 5. Run the script:
 
 ```shell
-./xfsBackupRestore.sh
+xfs-snapshots <config_file>
 ```
 
 6. The script will present a menu with the following options:
