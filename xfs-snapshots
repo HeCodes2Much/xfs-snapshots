@@ -12,7 +12,7 @@
 #Created:
 #   Wed 28 June 2023, 09:17:56 PM [GMT+1]
 #Modified:
-#   Thu 29 June 2023, 02:29:58 PM [GMT+1]
+#   Thu 29 June 2023, 02:44:20 PM [GMT+1]
 #
 #Description:
 #   This script provides a menu-based interface to perform XFS backup, restore,
@@ -27,14 +27,19 @@
 #   xfsdump (xfsprogs) - For XFS backup and restore utilities
 #   gzip - For compressing backup files
 #   coreutils - For command-line utilities like ls and rm
+#
+# shellcheck disable=all
 
-# Declare variables
-max_backups=10
 
-# Assign values to variables with quotes
-backup_directory="/mnt/500GB/example"
-xfs_device="/dev/sdb1"
-target_directory="/mnt/500GB/example2"
+# Check if the configuration file is provided as an argument
+if [ -z "$1" ]; then
+    echo "Error: Configuration file path is missing."
+    echo "Usage: ${0##*/} <config_file>"
+    exit 1
+fi
+
+# Source the configuration file
+source "$1"
 
 # Color codes
 RED='\033[0;31m'
