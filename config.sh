@@ -3,6 +3,7 @@
 # shellcheck disable=all
 
 # Declare variables
-backup_directory="/mnt/500GB/example"
-xfs_device="/dev/sdb1"
-target_directory="/mnt/500GB/example2"
+backup_directory="/run/media/repo/Backup/xfs"
+xfs_device="/dev/nvme0n1p2"
+target_directory="/run/media/repo/Backup/xfs2"
+max_backups=10

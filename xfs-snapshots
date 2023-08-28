@@ -12,7 +12,7 @@
 #Created:
 #   Wed 28 June 2023, 09:17:56 PM [GMT+1]
 #Modified:
-#   Thu 29 June 2023, 02:59:29 PM [GMT+1]
+#   Mon 28 August 2023, 03:01:12 PM [GMT+1]
 #
 #Description:
 #   This script provides a menu-based interface to perform XFS backup, restore,
@@ -40,15 +40,14 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-
 #=== CHECK ARGUMENT ===========================================================
 # Description: Checks if the configuration file is provided as an argument.
 #==============================================================================
 
 if [ -z "$1" ]; then
-    echo -e "${RED}Error: Configuration file path is missing.${NC}"
-    echo "Usage: ./xfsBackupRestore.sh <config_file>"
-    exit 1
+  echo -e "${RED}Error: Configuration file path is missing.${NC}"
+  echo "Usage: ./xfs-snapshots <config_file>"
+  exit 1
 fi
 
 #=== SOURCE CONFIGURATION ======================================================
@@ -63,24 +62,24 @@ fi
 
 missing_variables=()
 if [ -z "$max_backups" ]; then
-    missing_variables+=("max_backups")
+  missing_variables+=("max_backups")
 fi
 if [ -z "$backup_directory" ]; then
-    missing_variables+=("backup_directory")
+  missing_variables+=("backup_directory")
 fi
 if [ -z "$xfs_device" ]; then
-    missing_variables+=("xfs_device")
+  missing_variables+=("xfs_device")
 fi
 if [ -z "$target_directory" ]; then
-    missing_variables+=("target_directory")
+  missing_variables+=("target_directory")
 fi
 
 if [ "${#missing_variables[@]}" -gt 0 ]; then
-    echo -e "${RED}Error: Invalid configuration. The following variables are missing:${NC}"
-    for variable in "${missing_variables[@]}"; do
-        echo -e "${YELLOW} - $variable${NC}"
-    done
-    exit 1
+  echo -e "${RED}Error: Invalid configuration. The following variables are missing:${NC}"
+  for variable in "${missing_variables[@]}"; do
+    echo -e "${YELLOW} - $variable${NC}"
+  done
+  exit 1
 fi
 
 #=== FUNCTION =================================================================
@@ -91,20 +90,20 @@ fi
 #==============================================================================
 
 perform_backup() {
-    echo -e "${GREEN}Performing XFS backup...${NC}"
-    local backup_file
-    backup_file="${backup_directory}/backup_$(date +%Y%m%d_%H%M%S).xfs.gz"
-    xfsdump -J - "${xfs_device}" | gzip >"${backup_file}"
-    echo -e "Backup completed: ${backup_file}"
+  echo -e "${GREEN}Performing XFS backup...${NC}"
+  local backup_file
+  backup_file="${backup_directory}/backup_$(date +%Y%m%d_%H%M%S).xfs.gz"
+  xfsdump -J - "${xfs_device}" | gzip >"${backup_file}"
+  echo -e "Backup completed: ${backup_file}"
 
-    # Remove oldest backup if exceeding maximum number of backups
-    local backups=("${backup_directory}"/backup_*.xfs.gz)
-    local num_backups=${#backups[@]}
-    if [ "${num_backups}" -gt "${max_backups}" ]; then
-        local oldest_backup=${backups[0]}
-        rm "${oldest_backup}"
-        echo -e "${YELLOW}Removed oldest backup: ${oldest_backup}${NC}"
-    fi
+  # Remove oldest backup if exceeding maximum number of backups
+  local backups=("${backup_directory}"/backup_*.xfs.gz)
+  local num_backups=${#backups[@]}
+  if [ "${num_backups}" -gt "${max_backups}" ]; then
+    local oldest_backup=${backups[0]}
+    rm "${oldest_backup}"
+    echo -e "${YELLOW}Removed oldest backup: ${oldest_backup}${NC}"
+  fi
 }
 
 #=== FUNCTION =================================================================
@@ -114,16 +113,16 @@ perform_backup() {
 #==============================================================================
 
 perform_restore() {
-    echo -e "${GREEN}Performing XFS restore...${NC}"
-    local latest_backup
-    mapfile -t latest_backup < <(ls -t "${backup_directory}"/backup_*.xfs.gz)
-    if [ "${#latest_backup[@]}" -eq 0 ]; then
-        echo -e "${RED}No backups available for restore.${NC}"
-        return
-    fi
+  echo -e "${GREEN}Performing XFS restore...${NC}"
+  local latest_backup
+  mapfile -t latest_backup < <(ls -t "${backup_directory}"/backup_*.xfs.gz)
+  if [ "${#latest_backup[@]}" -eq 0 ]; then
+    echo -e "${RED}No backups available for restore.${NC}"
+    return
+  fi
 
-    gzip -dc "${latest_backup[0]}" | xfsrestore -J - "${target_directory}"
-    echo -e "Restore completed: ${target_directory}"
+  gzip -dc "${latest_backup[0]}" | xfsrestore -J - "${target_directory}"
+  echo -e "Restore completed: ${target_directory}"
 }
 
 #=== FUNCTION =================================================================
@@ -132,44 +131,44 @@ perform_restore() {
 #==============================================================================
 
 list_backups() {
-    echo -e "${GREEN}Available backups:${NC}"
-    local backups=()
-    readarray -t backups < <(find "${backup_directory}" -name "backup_*.xfs.gz")
-    local num_backups=${#backups[@]}
-    if [ "${num_backups}" -eq 0 ]; then
-        echo -e "${YELLOW}No backups found.${NC}"
-        return
+  echo -e "${GREEN}Available backups:${NC}"
+  local backups=()
+  readarray -t backups < <(find "${backup_directory}" -name "backup_*.xfs.gz")
+  local num_backups=${#backups[@]}
+  if [ "${num_backups}" -eq 0 ]; then
+    echo -e "${YELLOW}No backups found.${NC}"
+    return
+  fi
+
+  for ((i = 0; i < num_backups; i++)); do
+    echo -e "${YELLOW}$((i + 1))${NC}. ${backups[i]}"
+  done
+
+  local choice
+  while true; do
+    local exit_option=$((num_backups + 1))
+    echo -e "${GREEN}${exit_option}${NC}. Exit"
+    if [ "$num_backups" -gt 0 ]; then
+      read -r -p "Enter your choice (1-${exit_option}): " choice
+    else
+      read -r -p "Enter your choice (1): " choice
     fi
 
-    for ((i = 0; i < num_backups; i++)); do
-        echo -e "${YELLOW}$((i + 1))${NC}. ${backups[i]}"
-    done
-
-    local choice
-    while true; do
-        local exit_option=$((num_backups + 1))
-        echo -e "${GREEN}${exit_option}${NC}. Exit"
-        if [ "$num_backups" -gt 0 ]; then
-            read -r -p "Enter your choice (1-${exit_option}): " choice
-        else
-            read -r -p "Enter your choice (1): " choice
-        fi
-
-        if [ "$choice" = "${exit_option}" ]; then
-            return
-        elif [ "$choice" -ge 1 ] && [ "$choice" -le "$exit_option" ]; then
-            local backup_index=$((choice - 2))
-            if [ "$backup_index" -lt "$num_backups" ]; then
-                perform_restore "${backups[backup_index]}"
-                return
-            elif [ "$choice" -eq "$exit_option" ]; then
-                echo -e "${GREEN}Exiting...${NC}"
-                exit 0
-            fi
-        else
-            echo -e "${RED}Invalid choice. Please try again.${NC}"
-        fi
-    done
+    if [ "$choice" = "${exit_option}" ]; then
+      return
+    elif [ "$choice" -ge 1 ] && [ "$choice" -le "$exit_option" ]; then
+      local backup_index=$((choice - 2))
+      if [ "$backup_index" -lt "$num_backups" ]; then
+        perform_restore "${backups[backup_index]}"
+        return
+      elif [ "$choice" -eq "$exit_option" ]; then
+        echo -e "${GREEN}Exiting...${NC}"
+        exit 0
+      fi
+    else
+      echo -e "${RED}Invalid choice. Please try again.${NC}"
+    fi
+  done
 }
 
 #=== FUNCTION =================================================================
@@ -180,47 +179,45 @@ list_backups() {
 #==============================================================================
 
 remove_backup() {
-    echo -e "${GREEN}Available backups:${NC}"
-    local backups=()
-    readarray -t backups < <(find "${backup_directory}" -name "backup_*.xfs.gz")
-    local num_backups=${#backups[@]}
-    if [ "${num_backups}" -eq 0 ]; then
-        echo -e "${YELLOW}No backups found.${NC}"
-        return
+  echo -e "${GREEN}Available backups:${NC}"
+  local backups=()
+  readarray -t backups < <(find "${backup_directory}" -name "backup_*.xfs.gz")
+  local num_backups=${#backups[@]}
+  if [ "${num_backups}" -eq 0 ]; then
+    echo -e "${YELLOW}No backups found.${NC}"
+    return
+  fi
+
+  for ((i = 0; i < num_backups; i++)); do
+    echo -e "${YELLOW}$((i + 1))${NC}. ${backups[i]}"
+  done
+
+  local choice
+  while true; do
+    local exit_option=$((num_backups + 1))
+    echo -e "${GREEN}${exit_option}${NC}. Exit"
+    if [ "$num_backups" -gt 0 ]; then
+      read -r -p "Enter the backup number to remove (1-${num_backups}): " choice
+    else
+      read -r -p "Enter your choice (1): " choice
     fi
 
-    for ((i = 0; i < num_backups; i++)); do
-        echo -e "${YELLOW}$((i + 1))${NC}. ${backups[i]}"
-    done
-
-    local choice
-    while true; do
-        local exit_option=$((num_backups + 1))
-        echo -e "${GREEN}${exit_option}${NC}. Exit"
-        if [ "$num_backups" -gt 0 ]; then
-            read -r -p "Enter the backup number to remove (1-${num_backups}): " choice
-        else
-            read -r -p "Enter your choice (1): " choice
-        fi
-
-        if [ "$choice" = "${exit_option}" ]; then
-            return
-        elif [ "$choice" -ge 1 ] && [ "$choice" -le "$num_backups" ]; then
-            local backup_index=$((choice - 1))
-            if [ "$backup_index" -lt "$num_backups" ]; then
-                local backup_path="${backups[backup_index]}"
-                echo -e "${YELLOW}Removing backup: ${backup_path}${NC}"
-                rm "$backup_path"
-                echo -e "${GREEN}Backup removed successfully.${NC}"
-                return
-            fi
-        else
-            echo -e "${RED}Invalid choice. Please try again.${NC}"
-        fi
-    done
+    if [ "$choice" = "${exit_option}" ]; then
+      return
+    elif [ "$choice" -ge 1 ] && [ "$choice" -le "$num_backups" ]; then
+      local backup_index=$((choice - 1))
+      if [ "$backup_index" -lt "$num_backups" ]; then
+        local backup_path="${backups[backup_index]}"
+        echo -e "${YELLOW}Removing backup: ${backup_path}${NC}"
+        rm "$backup_path"
+        echo -e "${GREEN}Backup removed successfully.${NC}"
+        return
+      fi
+    else
+      echo -e "${RED}Invalid choice. Please try again.${NC}"
+    fi
+  done
 }
-
-
 
 #=== Main Script ==============================================================
 # Description: Main script section to display the menu and perform
@@ -228,34 +225,41 @@ remove_backup() {
 #==============================================================================
 
 while true; do
-    echo -e "${BLUE}XFS Backup and Restore Script${NC}"
-    echo -e "-----------------------------"
-    echo -e "Please select an option:"
-    echo -e "${GREEN}1${NC}. Backup XFS"
-    echo -e "${GREEN}2${NC}. List Backups"
-    echo -e "${GREEN}3${NC}. Remove Backup"
-    echo -e "${GREEN}4${NC}. Exit"
 
-    read -r -p "Enter your choice (1-4): " choice
+  runas=$(whoami)
 
-    case $choice in
-    1)
-        perform_backup
-        ;;
-    2)
-        list_backups
-        ;;
-    3)
-        remove_backup
-        ;;
-    4)
-        echo -e "${GREEN}Exiting...${NC}"
-        exit 0
-        ;;
-    *)
-        echo -e "${RED}Invalid choice. Please try again.${NC}"
-        ;;
-    esac
+  if [ $runas != 'root' ]; then
+    printf ${GREEN}"%s ${RED}command must be ran as root\n" "${0##*/}"
+    exit
+  fi
+  echo -e "${BLUE}XFS Backup and Restore Script${NC}"
+  echo -e "-----------------------------"
+  echo -e "Please select an option:"
+  echo -e "${GREEN}1${NC}. Backup XFS"
+  echo -e "${GREEN}2${NC}. List Backups"
+  echo -e "${GREEN}3${NC}. Remove Backup"
+  echo -e "${GREEN}4${NC}. Exit"
 
-    echo
+  read -r -p "Enter your choice (1-4): " choice
+
+  case $choice in
+  1)
+    perform_backup
+    ;;
+  2)
+    list_backups
+    ;;
+  3)
+    remove_backup
+    ;;
+  4)
+    echo -e "${GREEN}Exiting...${NC}"
+    exit 0
+    ;;
+  *)
+    echo -e "${RED}Invalid choice. Please try again.${NC}"
+    ;;
+  esac
+
+  echo
 done
